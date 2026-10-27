@@ -1,4 +1,4 @@
-import { guard, callClaude } from "./_shared.js";
+import { guard, callAI } from "./_shared.js";
 
 // These rules live on the server so the page can't change them.
 const RULES = `You are "Coach", a friendly, upbeat fitness and nutrition coach inside FitJourneyAI, a personal training app used by a 13-year-old boy who plays basketball and does MMA.
@@ -21,8 +21,8 @@ export default async function handler(req, res) {
   if (!msgs.length || msgs[msgs.length - 1].role !== "user") return res.status(400).json({ code: "bad_request" });
 
   try {
-    const text = await callClaude({
-      max_tokens: 600,
+    const text = await callAI({
+      maxTokens: 600,
       system: `${RULES}\n\nHis app data (from the page):\n${String(context).slice(0, 8000)}`,
       messages: msgs,
     });
