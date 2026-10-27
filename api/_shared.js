@@ -38,13 +38,16 @@ export function guard(req, res) {
 
 async function post(url, headers, body) {
   const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
-  if (r.status === 429) throw { status: 429, code: "rate_limited" };
   if (!r.ok) {
     console.error("AI provider error", r.status, await r.text().catch(() => ""));
+    // 429/503 = busy, 404 = model not available: worth trying again or another model
+    if (r.status === 429 || r.status === 503) throw { status: 429, code: "rate_limited", retry: true };
+    if (r.status === 404) throw { status: 502, code: "ai_error", retry: true };
     throw { status: 502, code: "ai_error" };
   }
   return r.json();
 }
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * One call for every provider.
@@ -68,7 +71,8 @@ export async function callAI({ system, messages, image, maxTokens = 600 }) {
   }
 
   if (p === "gemini") {
-    const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+    // Main model first, then backups if Google says it's busy or unavailable.
+    const models = [...new Set([process.env.GEMINI_MODEL || "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.1-flash-lite"])];
     const contents = messages.map((m, i) => {
       const parts = [{ text: m.content }];
       if (image && i === messages.length - 1) parts.unshift({ inlineData: { mimeType: "image/jpeg", data: image } });
@@ -76,10 +80,22 @@ export async function callAI({ system, messages, image, maxTokens = 600 }) {
     });
     const body = { contents, generationConfig: { maxOutputTokens: maxTokens + 2000 } };
     if (system) body.systemInstruction = { parts: [{ text: system }] };
-    if (model.startsWith("gemini-2.5-flash")) body.generationConfig.thinkingConfig = { thinkingBudget: 0 };
-    const j = await post(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      { "x-goog-api-key": process.env.GEMINI_API_KEY }, body);
-    return (j.candidates?.[0]?.content?.parts || []).map((x) => x.text || "").join("");
+    let lastErr;
+    for (const model of models) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const j = await post(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+            { "x-goog-api-key": process.env.GEMINI_API_KEY }, body);
+          return (j.candidates?.[0]?.content?.parts || []).map((x) => x.text || "").join("");
+        } catch (e) {
+          lastErr = e;
+          if (!e.retry) throw e;
+          if (e.code !== "rate_limited") break;   // model missing: go to next model
+          await sleep(800);                       // busy: wait, retry once, then next model
+        }
+      }
+    }
+    throw lastErr;
   }
 
   if (p === "anthropic") {

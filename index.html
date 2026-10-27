@@ -489,7 +489,7 @@ async function api(path,body){
 }
 function toB64(blob){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(",")[1]);fr.onerror=rej;fr.readAsDataURL(blob)})}
 function apiErr(e,what){const c=e&&e.code;
-  return c==="unauthorized"?"Enter the app passcode on the Coach tab first.":c==="not_configured"?"The AI key isn't set up on the server yet.":c==="rate_limited"?"Too many requests right now. Wait a minute and try again.":c==="offline"?"You're offline. Try again when you have internet.":what}
+  return c==="unauthorized"?"Enter the app passcode on the Coach tab first.":c==="not_configured"?"The AI key isn't set up on the server yet.":c==="rate_limited"?"The AI is busy right now. Wait a minute and try again.":c==="offline"?"You're offline. Try again when you have internet.":what}
 function shrink(file){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const m=1400,sc=Math.min(1,m/Math.max(img.width,img.height));
   const cv=document.createElement("canvas");cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
   cv.toBlob(b=>b?res(b):rej(),"image/jpeg",.85);URL.revokeObjectURL(img.src)};img.onerror=rej;img.src=URL.createObjectURL(file)})}
