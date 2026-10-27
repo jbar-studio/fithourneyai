@@ -2,7 +2,7 @@
 //
 // Works with whichever AI key is set in Vercel → Settings → Environment Variables:
 //   OPENAI_API_KEY     (OpenAI / ChatGPT)    model: OPENAI_MODEL    (default gpt-5-mini)
-//   GEMINI_API_KEY     (Google Gemini)       model: GEMINI_MODEL    (default gemini-2.5-flash)
+//   GEMINI_API_KEY     (Google Gemini)       model: GEMINI_MODEL    (default gemini-3.8-flash)
 //   ANTHROPIC_API_KEY  (Claude)              model: ANTHROPIC_MODEL (default claude-haiku-5-5)
 // Set AI_PROVIDER to "openai", "gemini" or "anthropic" to force one when several keys exist.
 
@@ -68,13 +68,13 @@ export async function callAI({ system, messages, image, maxTokens = 600 }) {
   }
 
   if (p === "gemini") {
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
     const contents = messages.map((m, i) => {
       const parts = [{ text: m.content }];
       if (image && i === messages.length - 1) parts.unshift({ inlineData: { mimeType: "image/jpeg", data: image } });
       return { role: m.role === "assistant" ? "model" : "user", parts };
     });
-    const body = { contents, generationConfig: { maxOutputTokens: maxTokens } };
+    const body = { contents, generationConfig: { maxOutputTokens: maxTokens + 2000 } };
     if (system) body.systemInstruction = { parts: [{ text: system }] };
     if (model.startsWith("gemini-2.5-flash")) body.generationConfig.thinkingConfig = { thinkingBudget: 0 };
     const j = await post(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
