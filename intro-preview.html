@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FitJourneyAI Intro Picks</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/* Layout: a grid of four phone-shaped stages, one per intro idea, each with a replay button. */
+:root{
+  --bg:#f1f3f7; --surface:#ffffff; --ink:#0f1724; --muted:#5a6578; --line:#e2e7ef;
+  --court:#0d1a2e; --court-2:#18294a; --court-ink:#f4f7fb; --accent:#ef6418; --steel:#c9d3e2;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#090f18;--surface:#111925;--ink:#e9eef5;--muted:#97a4b8;--line:#222d3e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#090f18;--surface:#111925;--ink:#e9eef5;--muted:#97a4b8;--line:#222d3e;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);margin:0}
+.wrap{max-width:1100px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(2rem,6vw,2.8rem);margin:0;line-height:1;text-wrap:balance}
+h1 span{color:var(--accent)}
+.lede{color:var(--muted);margin:8px 0 22px;max-width:60ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.pick{background:var(--surface);border-radius:20px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 0 1px var(--line)}
+.stage{position:relative;container-type:inline-size;aspect-ratio:9/13;border-radius:14px;overflow:hidden;display:grid;place-items:center;color:var(--court-ink);
+  background:var(--court);background-image:radial-gradient(90% 60% at 50% 40%,rgba(239,100,24,.2),transparent 62%)}
+.stage::after{content:"";position:absolute;left:50%;top:50%;width:150%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:2px solid rgba(255,255,255,.06);pointer-events:none}
+.inner{position:relative;display:grid;place-items:center;gap:10px;z-index:1}
+.bell{grid-area:1/1;width:56cqw;height:auto;overflow:visible;fill:var(--accent)}
+.bell .bar{fill:var(--steel)}
+.bell g,.bell rect,.bell path{transform-box:fill-box;transform-origin:center}
+.word{grid-area:1/1;font-family:var(--display);font-weight:800;font-size:13.5cqw;line-height:1;white-space:nowrap;padding:.06em .04em;opacity:1}
+.word span{display:inline-block;opacity:0}
+.word .ai{color:var(--accent)}
+.tag{font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;font-weight:700;color:rgba(244,247,251,.7);opacity:0}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 4px}
+.meta b{font-family:var(--display);font-size:1.35rem;font-weight:800}
+.meta p{margin:2px 0 0;font-size:.82rem;color:var(--muted)}
+.replay{border:0;background:var(--accent);color:#fff;font:inherit;font-weight:700;font-size:.82rem;padding:8px 12px;border-radius:10px;cursor:pointer;flex:none}
+.replay:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.scene{grid-area:1/1;width:78cqw;height:auto;overflow:visible}
+.scene .s{fill:rgba(0,0,0,0);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.scene .o{stroke:var(--accent)} .scene .st{stroke:var(--steel)} .scene .w{stroke:var(--court-ink);fill:none!important} .scene .k{stroke:var(--court);stroke-width:1.6;fill:none!important}
+.scene .db,.scene .bag,.scene .glove,.scene .hoop,.scene .hits{transform-box:view-box}
+.scene .db{transform-origin:120px 120px} .scene .bag{transform-origin:120px 14px} .scene .hoop{transform-origin:120px 90px}
+.scene .glove{transform-origin:40px 118px} .scene .hits{transform-origin:156px 110px}
+.scene .net{transform-box:view-box;transform-origin:120px 93px}
+.scene .ball{transform-box:view-box;transform-origin:0 0}
+.pick.featured{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,320px) 1fr;align-items:center;gap:18px}
+@media(max-width:620px){.pick.featured{grid-template-columns:1fr}}
+.letter{display:inline-block}
+.dust{position:absolute;width:6px;height:6px;border-radius:50%;background:rgba(244,247,251,.6);left:50%;top:50%;opacity:0}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:2}
+.outline{fill:none;stroke:var(--accent);stroke-width:2.5}
+.outline .bar{fill:none;stroke:var(--steel)}
+@media (prefers-reduced-motion:reduce){.lede::after{content:" Your device has reduced motion on, so tap Replay to watch each one."}}
+</style>
+</head><body>
+
+<div class="wrap">
+  <h1>Pick your <span>intro</span></h1>
+  <p class="lede">Each one plays when FitJourneyAI opens, then slides into the app. They loop here so you can compare. Tap Replay to watch one from the start.</p>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const PICKS=[
+  {id:"combo",name:"5 · Sketch combo",desc:"Sketched dumbbell spins into a boxing bag that gets punched, then into a hoop with a swish.",loop:7300},
+  {id:"split",name:"1 · Split",desc:"Lift, one rep, then the plates slide apart and become Fit and AI."},
+  {id:"spin",name:"2 · Spin",desc:"The dumbbell spins like it's being flipped, then flips over into the name."},
+  {id:"slam",name:"3 · Slam",desc:"Drops from the top, slams down with a shake, and the letters stamp in."},
+  {id:"draw",name:"4 · Sketch",desc:"Drawn in outline like a blueprint, then fills in and turns into the name."}
+];
+const BELL=`<svg class="bell" viewBox="0 0 240 90" aria-hidden="true">
+  <g class="plL"><rect x="14" y="17" width="16" height="56" rx="4"/><rect x="32" y="8" width="20" height="74" rx="5"/></g>
+  <rect class="bar" x="52" y="39" width="136" height="12" rx="6"/>
+  <g class="plR"><rect x="188" y="8" width="20" height="74" rx="5"/><rect x="210" y="17" width="16" height="56" rx="4"/></g></svg>`;
+const grid=document.getElementById("grid");
+grid.innerHTML=PICKS.map(p=>`<article class="pick${p.id==="combo"?" featured":""}"><div class="stage" id="st-${p.id}"></div>
+  <div class="meta"><div><b>${p.name}</b><p>${p.desc}</p></div><button class="replay" data-id="${p.id}" aria-label="Replay ${p.name}">Replay</button></div></article>`).join("");
+
+function setup(st,opts={}){
+  const word=opts.letters
+    ?`<div class="word">${"Fit".split("").map(c=>`<span class="L">${c}</span>`).join("")}${"Journey".split("").map(c=>`<span class="L">${c}</span>`).join("")}<span class="L ai">A</span><span class="L ai">I</span></div>`
+    :`<div class="word"><span class="fit">Fit</span><span class="jr">Journey</span><span class="ai">AI</span></div>`;
+  st.innerHTML=`<div class="inner">${BELL}${word}<div class="tag">Train. Fuel. Grow.</div></div><div class="flash"></div>`;
+  const q=s=>st.querySelector(s);
+  return {q,bell:q(".bell"),plL:q(".plL"),plR:q(".plR"),bar:q(".bar"),word:q(".word"),tag:q(".tag"),flash:q(".flash")};
+}
+const E="cubic-bezier(.2,.8,.2,1)",B="cubic-bezier(.34,1.56,.64,1)";
+const F=(el,kf,o)=>el.animate(kf,{fill:"forwards",...o});
+const showTag=(t,d)=>F(t,[{opacity:0,transform:"translateY(6px)"},{opacity:1,transform:"none"}],{duration:400,delay:d,easing:E});
+
+const PLAY={
+  split(st){
+    const s=setup(st),fit=s.q(".fit"),jr=s.q(".jr"),ai=s.q(".ai");
+    jr.style.clipPath="inset(0 50% 0 50%)";
+    const sb=s.bell.getBoundingClientRect(),u=240/sb.width,cx=r=>r.left+r.width/2;
+    const fr=fit.getBoundingClientRect(),ar=ai.getBoundingClientRect();
+    const dL=(cx(fr)-(sb.left+33/u))*u,dR=(cx(ar)-(sb.left+207/u))*u,sc=((cx(ar)-cx(fr))*u-40)/136;
+    F(s.bell,[{opacity:0,transform:"translateY(60px) rotate(-22deg) scale(.8)"},{opacity:1,transform:"none"}],{duration:560,easing:B});
+    s.bell.animate([{transform:"translateY(0)"},{transform:"translateY(-14px)"},{transform:"translateY(0)"}],{duration:300,delay:560,composite:"add"});
+    F(s.plL,[{transform:"none"},{transform:`translateX(${dL}px)`}],{duration:440,delay:880,easing:E});
+    F(s.plR,[{transform:"none"},{transform:`translateX(${dR}px)`}],{duration:440,delay:880,easing:E});
+    F(s.bar,[{transform:"none"},{transform:`scaleX(${sc})`}],{duration:440,delay:880,easing:E});
+    [s.plL,s.plR].forEach(p=>F(p,[{opacity:1},{opacity:0}],{duration:260,delay:1320}));
+    F(s.bar,[{opacity:1},{opacity:0}],{duration:300,delay:1400});
+    F(fit,[{opacity:0,transform:"scale(.55)"},{opacity:1,transform:"none"}],{duration:420,delay:1320,easing:B});
+    F(ai,[{opacity:0,transform:"scale(.55) rotate(-8deg)"},{opacity:1,transform:"none"}],{duration:460,delay:1360,easing:B});
+    F(jr,[{opacity:1,clipPath:"inset(0 50% 0 50%)"},{opacity:1,clipPath:"inset(0 0 0 0)"}],{duration:420,delay:1380,easing:E});
+    s.word.animate([{transform:"scale(1)"},{transform:"scale(1.06)"},{transform:"scale(1)"}],{duration:420,delay:1750});
+    showTag(s.tag,1700);
+  },
+  spin(st){
+    const s=setup(st);st.style.perspective="700px";
+    const parts=[...s.word.querySelectorAll("span")];
+    F(s.bell,[{opacity:0,transform:"scale(.6) rotate(0)"},{opacity:1,transform:"scale(1) rotate(0)"}],{duration:380,easing:B});
+    F(s.bell,[{transform:"rotate(0)"},{transform:"rotate(-360deg)"},{transform:"rotate(-720deg)"}],{duration:900,delay:380,easing:"cubic-bezier(.5,0,.3,1)",composite:"add"});
+    F(s.bell,[{opacity:1,transform:"rotateX(0)"},{opacity:0,transform:"rotateX(90deg)"}],{duration:260,delay:1300,easing:"ease-in"});
+    s.word.style.transformOrigin="50% 50%";
+    parts.forEach(p=>p.style.opacity=1);
+    F(s.word,[{opacity:0,transform:"rotateX(-90deg)"},{opacity:1,transform:"rotateX(0)"}],{duration:520,delay:1540,easing:B});
+    s.word.style.opacity=0;
+    showTag(s.tag,1900);
+  },
+  slam(st){
+    const s=setup(st,{letters:true}),ls=[...s.word.querySelectorAll(".L")];
+    F(s.bell,[{opacity:1,transform:"translateY(-260px) rotate(8deg)"},{opacity:1,transform:"translateY(0) rotate(0)"}],{duration:420,delay:150,easing:"cubic-bezier(.55,0,1,.45)",fill:"both"});
+    F(s.bell,[{transform:"scaleY(1)"},{transform:"scale(1.08,.86)"},{transform:"scale(1)"}],{duration:240,delay:570,composite:"add"});
+    st.querySelector(".inner").animate([{transform:"none"},{transform:"translate(-6px,3px)"},{transform:"translate(5px,-2px)"},{transform:"translate(-3px,1px)"},{transform:"none"}],{duration:300,delay:570});
+    for(let i=0;i<10;i++){const d=document.createElement("i");d.className="dust";st.appendChild(d);const a=(i/10)*Math.PI+Math.PI,r=60+Math.random()*50;
+      d.animate([{opacity:.9,transform:"translate(-50%,30px) scale(1)"},{opacity:0,transform:`translate(calc(-50% + ${Math.cos(a)*r*1.6}px),${30+Math.sin(a)*r*.5}px) scale(.3)`}],{duration:600,delay:570,easing:E,fill:"forwards"})}
+    F(s.flash,[{opacity:0},{opacity:.35},{opacity:0}],{duration:260,delay:1150});
+    F(s.bell,[{opacity:1},{opacity:0}],{duration:220,delay:1150});
+    F(s.bell,[{transform:"scale(1)"},{transform:"scale(1.3)"}],{duration:220,delay:1150,composite:"add"});
+    ls.forEach((l,i)=>F(l,[{opacity:0,transform:"translateY(-30px) scale(1.6)"},{opacity:1,transform:"none"}],{duration:260,delay:1250+i*55,easing:B}));
+    showTag(s.tag,1250+ls.length*55+100);
+  },
+  draw(st){
+    const s=setup(st,{letters:true}),ls=[...s.word.querySelectorAll(".L")];
+    s.bell.classList.add("outline");s.bell.style.fill="none";
+    const shapes=[...s.bell.querySelectorAll("rect")];
+    shapes.forEach((r,i)=>{const len=2*(+r.getAttribute("width")+ +r.getAttribute("height"));r.style.strokeDasharray=len;r.style.strokeDashoffset=len;
+      F(r,[{strokeDashoffset:len},{strokeDashoffset:0}],{duration:600,delay:100+i*90,easing:"ease-in-out"})});
+    shapes.forEach(r=>F(r,[{fill:"transparent"},{fill:r.classList.contains("bar")?"var(--steel)":"var(--accent)"}],{duration:300,delay:1050}));
+    F(s.bell,[{opacity:1,transform:"scale(1)"},{opacity:0,transform:"scale(.9)",filter:"blur(4px)"}],{duration:300,delay:1450});
+    ls.forEach((l,i)=>F(l,[{opacity:0,filter:"blur(6px)",transform:"translateX(-6px)"},{opacity:1,filter:"blur(0)",transform:"none"}],{duration:320,delay:1500+i*45,easing:E}));
+    showTag(s.tag,1500+ls.length*45+80);
+  }
+};
+
+const SCENE=`<svg class="scene" viewBox="0 0 240 240" aria-hidden="true">
+  <g class="db">
+    <rect class="s o" x="44" y="99" width="12" height="42" rx="3"/><rect class="s o" x="57" y="92" width="15" height="56" rx="4"/>
+    <rect class="s st" x="72" y="115" width="96" height="10" rx="5"/>
+    <rect class="s o" x="168" y="92" width="15" height="56" rx="4"/><rect class="s o" x="184" y="99" width="12" height="42" rx="3"/>
+  </g>
+  <g class="bag">
+    <path class="s st" d="M120 14 V48"/><path class="s st" d="M108 48 H132"/>
+    <rect class="s o" x="96" y="50" width="48" height="128" rx="22"/>
+    <path class="s o" d="M96 82 H144 M96 150 H144"/>
+  </g>
+  <g class="glove">
+    <rect class="s st" x="18" y="106" width="12" height="22" rx="3"/>
+    <path class="s o" d="M32 104 H60 a15 15 0 0 1 0 30 H32 a2 2 0 0 1 -2 -2 V106 a2 2 0 0 1 2 -2 Z"/>
+    <path class="s o" d="M44 104 c0 -8 14 -8 14 0"/>
+  </g>
+  <g class="hits"><path class="s w" d="M150 92 l12 -6 M152 110 h14 M150 128 l12 6"/></g>
+  <g class="hoop">
+    <rect class="s st" x="78" y="30" width="84" height="56" rx="4"/>
+    <rect class="s st" x="104" y="56" width="32" height="24" rx="2"/>
+    <ellipse class="s o rim" cx="120" cy="92" rx="26" ry="6"/>
+    <g class="net"><path class="s w" d="M95 93 L103 134 M106 96 L110 134 M120 98 V134 M134 96 L130 134 M145 93 L137 134 M99 112 L141 112 M103 126 L137 126"/></g>
+  </g>
+  <g class="ball"><circle class="s o" cx="0" cy="0" r="12"/><path class="s k" d="M-12 0 H12 M0 -12 V12 M-8 -9 C-3 -3 -3 3 -8 9 M8 -9 C3 -3 3 3 8 9"/></g>
+</svg>`;
+function draw(el,dur,delay){const L=el.getTotalLength?el.getTotalLength():300;el.style.strokeDasharray=L;el.style.strokeDashoffset=L;return el.animate([{strokeDashoffset:L},{strokeDashoffset:0}],{duration:dur,delay,easing:"ease-in-out",fill:"forwards"})}
+function fillIn(els,delay){els.forEach(e=>{const f=e.classList.contains("st")?"var(--steel)":e.classList.contains("o")?"var(--accent)":"none";if(f!=="none"&&e.tagName!=="path")e.animate([{fill:"rgba(0,0,0,0)"},{fill:f}],{duration:260,delay,fill:"forwards"})})}
+PLAY.combo=function(st){
+  st.innerHTML=`<div class="inner">${SCENE}<div class="word">${"Fit".split("").map(c=>`<span class="L">${c}</span>`).join("")}${"Journey".split("").map(c=>`<span class="L">${c}</span>`).join("")}<span class="L ai">A</span><span class="L ai">I</span></div><div class="tag">Train. Fuel. Grow.</div></div>`;
+  const q=s=>st.querySelector(s),qa=s=>[...st.querySelectorAll(s)];
+  const db=q(".db"),bag=q(".bag"),glove=q(".glove"),hits=q(".hits"),hoop=q(".hoop"),net=q(".net"),ball=q(".ball"),scene=q(".scene");
+  [bag,glove,hits,hoop,ball].forEach(g=>g.style.opacity=0);
+  // 1. Sketch the dumbbell, fill it in
+  qa(".db .s").forEach((e,i)=>draw(e,520,60+i*80));
+  fillIn(qa(".db .s"),820);
+  // 2. Spin it away as the bag sketches in
+  F(db,[{transform:"rotate(0) scale(1)",opacity:1},{transform:"rotate(-540deg) scale(.2)",opacity:0}],{duration:520,delay:1150,easing:"cubic-bezier(.6,0,.4,1)"});
+  F(bag,[{opacity:0,transform:"rotate(200deg) scale(.3)"},{opacity:1,transform:"rotate(0) scale(1)"}],{duration:520,delay:1400,easing:B});
+  qa(".bag .s").forEach((e,i)=>draw(e,380,1400+i*60));
+  fillIn(qa(".bag rect"),1780);
+  // 3. Glove jabs twice, bag swings, impact lines
+  F(glove,[{opacity:0,transform:"translateX(-40px)"},{opacity:1,transform:"translateX(0)"}],{duration:260,delay:1900,easing:E});
+  qa(".glove .s").forEach(e=>draw(e,260,1900));
+  fillIn(qa(".glove rect"),2100);
+  [2200,2560].forEach((t,k)=>{
+    glove.animate([{transform:"translateX(0)"},{transform:"translateX(26px)"},{transform:"translateX(0)"}],{duration:300,delay:t,easing:"cubic-bezier(.3,0,.2,1)",composite:"add"});
+    bag.animate([{transform:"rotate(0)"},{transform:`rotate(${k?-14:-9}deg)`},{transform:"rotate(4deg)"},{transform:"rotate(0)"}],{duration:620,delay:t+110,easing:"ease-out",composite:"add"});
+    hits.animate([{opacity:0,transform:"translateX(0)"},{opacity:1,transform:"translateX(6px)"},{opacity:0,transform:"translateX(12px)"}],{duration:300,delay:t+110});
+    qa(".hits .s").forEach(e=>{e.style.strokeDasharray="none"});
+  });
+  // 4. Bag and glove spin into the hoop
+  F(glove,[{opacity:1},{opacity:0}],{duration:200,delay:3200});
+  setTimeout(()=>{bag.style.transformOrigin="120px 114px"},3290);
+  F(bag,[{opacity:1,transform:"rotate(0) scale(1)"},{opacity:0,transform:"rotate(-360deg) scale(.3)"}],{duration:480,delay:3300,easing:"cubic-bezier(.6,0,.4,1)"});
+  F(hoop,[{opacity:0,transform:"scale(.4) rotate(120deg)"},{opacity:1,transform:"none"}],{duration:500,delay:3550,easing:B});
+  qa(".hoop .s").forEach((e,i)=>draw(e,360,3550+i*50));
+  // 5. Ball arcs in and swishes
+  const path=[];for(let i=0;i<=14;i++){const t=i/14,u=1-t,x=u*u*20+2*u*t*80+t*t*120,y=u*u*200+2*u*t*(-60)+t*t*88;path.push({opacity:1,transform:`translate(${x}px,${y}px) rotate(${t*540}deg)`})}
+  path.push({opacity:1,transform:"translate(120px,128px) rotate(560deg)"},{opacity:0,transform:"translate(120px,170px) rotate(600deg)"});
+  ball.animate(path,{duration:1000,delay:4050,easing:"linear",fill:"both"});
+  qa(".ball .s").forEach(e=>draw(e,300,4050));
+  fillIn([q(".ball circle")],4200);
+  net.animate([{transform:"scaleY(1)"},{transform:"scaleY(1.22) scaleX(.9)"},{transform:"scaleY(.95)"},{transform:"scaleY(1)"}],{duration:500,delay:4770,easing:"ease-out"});
+  // 6. Blur into the name
+  F(scene,[{opacity:1,filter:"blur(0)",transform:"none"},{opacity:0,filter:"blur(6px)",transform:"scale(.92)"}],{duration:360,delay:5300});
+  qa(".word .L").forEach((l,i)=>F(l,[{opacity:0,filter:"blur(6px)",transform:"translateX(-6px)"},{opacity:1,filter:"blur(0)",transform:"none"}],{duration:320,delay:5400+i*45,easing:E}));
+  showTag(q(".tag"),5400+12*45+80);
+};
+const timers={};
+function play(id){
+  const st=document.getElementById("st-"+id);
+  st.getAnimations({subtree:true}).forEach(a=>a.cancel());
+  PLAY[id](st);
+  clearTimeout(timers[id]);
+  if(!matchMedia("(prefers-reduced-motion: reduce)").matches)timers[id]=setTimeout(()=>play(id),(PICKS.find(p=>p.id===id).loop)||4600);
+}
+grid.addEventListener("click",e=>{const b=e.target.closest(".replay");if(b)play(b.dataset.id)});
+const start=()=>PICKS.forEach((p,i)=>setTimeout(()=>play(p.id),i*250));
+(document.fonts&&document.fonts.ready?Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,800))]):Promise.resolve()).then(start);
+</script>
+
+</body></html>
