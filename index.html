@@ -161,7 +161,7 @@ input[type=checkbox]:active{transform:scale(.9)}
 .wsum b{font-family:var(--mono);font-size:1.15rem;color:var(--water)}
 
 /* Forms */
-textarea,input[type=text],input[type=number],input[type=password],select{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:10px 12px;font:inherit;width:100%;transition:border-color .15s,box-shadow .15s}
+textarea,input[type=text],input[type=number],input[type=password],input[type=time],select{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:10px 12px;font:inherit;width:100%;transition:border-color .15s,box-shadow .15s}
 textarea:focus,input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 textarea{min-height:72px;resize:vertical}
 label.f{display:flex;flex-direction:column;gap:6px;font-size:.78rem;color:var(--muted);font-weight:600}
@@ -268,6 +268,21 @@ details.card:not([open]){gap:0}
 .ask{display:flex;gap:8px;align-items:flex-end}
 .ask textarea{min-height:48px;flex:1;min-width:0}
 .passbox summary{cursor:pointer}
+
+/* Reminders */
+.remstat{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--surface-2)}
+.remstat>div{flex:1;min-width:0}
+.remstat .dot{width:10px;height:10px;border-radius:50%;background:var(--line-2);flex:none}
+.remstat.on{background:var(--good-soft)}
+.remstat.on .dot{background:var(--good);box-shadow:0 0 0 4px color-mix(in srgb,var(--good) 25%,transparent)}
+.rems{display:flex;flex-direction:column}
+.rem{display:grid;grid-template-columns:24px 1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.rem:last-child{border-bottom:0}
+.rem .rn{display:flex;flex-direction:column;min-width:0;cursor:pointer}
+.rem input[type=time]{width:auto;padding:7px 8px;font-family:var(--mono);font-size:.82rem}
+.rem select{width:auto;padding:7px 8px;font-size:.82rem}
+.rem.off .rn,.rem.off input[type=time],.rem.off select{opacity:.5}
+@media(max-width:480px){.rem{grid-template-columns:24px 1fr auto}.rem select{grid-column:2/4;justify-self:start}}
 
 /* Toast */
 .toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;z-index:9;background:var(--ink);color:var(--surface);
@@ -388,7 +403,12 @@ const DEFAULT={
   targets:{cal:2400,p:60},
   gear:["Resistance bands","Bench / press chair","Dumbbells","Plyo box","Pull-up bar"],
   dumbbells:"", bands:"", goals:"Gain muscle, lose fat, get my first unassisted pull-up, jump higher for basketball.",
-  logs:{}, prs:[], maxes:[], body:[]
+  logs:{}, prs:[], maxes:[], body:[],
+  reminders:[
+    {id:"workout",on:true,t:"17:00",days:"all"},
+    {id:"water",on:true,t:"15:30",days:"wk"},
+    {id:"night",on:true,t:"20:30",days:"all"},
+    {id:"bed",on:true,t:"22:00",days:"wk"}]
 };
 function hydrate(j){const s=Object.assign(structuredClone(DEFAULT),j||{});
   // move old pull-up test entries into maxes
@@ -399,6 +419,7 @@ function hydrate(j){const s=Object.assign(structuredClone(DEFAULT),j||{});
   DEFAULT.foods.forEach(df=>{if(!seeded.has(df.id)&&!s.foods.some(f=>f.id===df.id))s.foods.push(structuredClone(df))});
   s.seeded=DEFAULT.foods.map(f=>f.id);
   s.foods.forEach(f=>{if(!f.cat)f.cat=(DEFAULT.foods.find(d=>d.id===f.id)||{}).cat||"My foods"});
+  if(!Array.isArray(s.reminders)||!s.reminders.length)s.reminders=structuredClone(DEFAULT.reminders);
   // water used to be 8 cups, now bottles (2 cups ≈ 1 bottle)
   Object.values(s.logs||{}).forEach(l=>{if(l&&!l.wb){l.water=Math.ceil((l.water||0)/2);l.wb=1}});
   return s}
@@ -656,11 +677,62 @@ async function scanLabel(file){
   }
 }
 
+/* ---------- Reminders (push notifications) ---------- */
+const REM_LABEL={workout:["Workout time","Names today's workout"],water:["Drink water","After school"],night:["Night check-in","Finish checklists and log food"],bed:["Bedtime","Lights out for 9 hours of sleep"]};
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const standalone=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const pushSupported="serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+let remState="checking", remMsg="";
+let swReg=null;
+if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").then(r=>{swReg=r;return r.pushManager&&r.pushManager.getSubscription()}).then(sub=>{remState=sub?"on":"off";renderSchedule()}).catch(()=>{remState="off";renderSchedule()})}else{remState="off"}
+function remPayload(){const titles={};for(let d=0;d<7;d++)titles[d]=PLAN[d].title;return S.reminders.map(r=>r.id==="workout"?{...r,titles}:r)}
+function b64ToU8(b){const p="=".repeat((4-b.length%4)%4);const raw=atob((b+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(raw,c=>c.charCodeAt(0))}
+function pushErr(e){const c=e&&e.code;return c==="unauthorized"?"Enter your app passcode on the Coach tab first.":c==="storage_missing"?"Reminder storage isn't connected in Vercel yet.":c==="offline"?"You're offline. Try again with internet.":"Something went wrong. Try again in a minute."}
+async function remOn(){
+  remMsg="";
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=="granted"){remMsg="Notifications are blocked. Turn them on for FitJourneyAI in your phone's Settings → Notifications.";renderSchedule();return}
+    const reg=swReg||await navigator.serviceWorker.ready;
+    const keyRes=await fetch("/api/push?a=key");const kj=await keyRes.json().catch(()=>({}));
+    if(!keyRes.ok)throw {code:kj.code};
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(kj.publicKey)});
+    await api("/api/push",{action:"subscribe",subscription:sub.toJSON(),tz:Intl.DateTimeFormat().resolvedOptions().timeZone,reminders:remPayload()});
+    await api("/api/push",{action:"test",subscription:sub.toJSON()});
+    remState="on";toast("Reminders on");
+  }catch(e){remMsg=pushErr(e)}
+  renderSchedule();
+}
+async function remOff(){
+  try{const reg=swReg||await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();
+    if(sub){await api("/api/push",{action:"unsubscribe",subscription:sub.toJSON()}).catch(()=>{});await sub.unsubscribe()}
+    remState="off";toast("Reminders off")}catch(e){remMsg=pushErr(e)}
+  renderSchedule();
+}
+let remSyncT=null;
+function remSync(){clearTimeout(remSyncT);remSyncT=setTimeout(async()=>{if(remState!=="on")return;try{const reg=swReg||await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(sub){await api("/api/push",{action:"subscribe",subscription:sub.toJSON(),tz:Intl.DateTimeFormat().resolvedOptions().timeZone,reminders:remPayload()});toast("Reminder times saved")}}catch(e){remMsg=pushErr(e);renderSchedule()}},800)}
+function remCard(){
+  let top;
+  if(!pushSupported&&isIOS&&!standalone)top=`<div class="note">On iPhone, reminders only work from the Home Screen app. Tap <b>Share</b> → <b>Add to Home Screen</b>, open FitJourneyAI from the new icon, then come back here.</div>`;
+  else if(!pushSupported)top=`<div class="note">This browser can't show reminders. Try Safari on iPhone (from the Home Screen) or Chrome.</div>`;
+  else if(remState==="on")top=`<div class="remstat on"><span class="dot"></span><div><b>Reminders are on</b><div class="small muted">They come even when the app is closed.</div></div><button class="btn ghost sm" id="rem-off">Turn off</button></div>`;
+  else top=`<div class="remstat"><span class="dot"></span><div><b>Reminders are off</b><div class="small muted">Get a buzz for workouts, water and bedtime.</div></div><button class="btn sm" id="rem-on" ${remState==="checking"?"disabled":""}>Turn on</button></div>`;
+  return `<div class="card"><div class="chead"><h2>Reminders</h2><span class="small muted">Times are on your phone's clock</span></div>${top}
+  ${remMsg?`<p class="small" style="color:var(--accent)">${esc(remMsg)}</p>`:""}
+  <div class="rems">${S.reminders.map((r,i)=>{const [n,d]=REM_LABEL[r.id]||[r.id,""];return `<div class="rem ${r.on?"":"off"}">
+    <input type="checkbox" id="rem-${r.id}" data-rem="${i}" data-k="on" ${r.on?"checked":""} aria-label="${esc(n)}">
+    <label for="rem-${r.id}" class="rn"><b>${esc(n)}</b><span class="small muted">${esc(d)}</span></label>
+    <input type="time" id="remt-${r.id}" data-rem="${i}" data-k="t" value="${esc(r.t)}" aria-label="${esc(n)} time">
+    <select id="remd-${r.id}" data-rem="${i}" data-k="days" aria-label="${esc(n)} days"><option value="all" ${r.days==="all"?"selected":""}>Every day</option><option value="wk" ${r.days==="wk"?"selected":""}>Mon–Fri</option><option value="we" ${r.days==="we"?"selected":""}>Weekends</option></select>
+  </div>`}).join("")}</div></div>`;
+}
+
 /* ---------- Schedule ---------- */
 function renderSchedule(){
   const t=new Date();t.setHours(0,0,0,0);
   const start=new Date(t);start.setDate(t.getDate()-((t.getDay()+6)%7));
-  let h=`<div class="card"><h2>This week</h2><p class="small muted">Green squares show how much of each day you finished. Tap a day to open its checklist.</p></div><div class="week">`;
+  let h=remCard()+`<div class="card"><h2>This week</h2><p class="small muted">Green squares show how much of each day you finished. Tap a day to open its checklist.</p></div><div class="week">`;
   for(let i=0;i<7;i++){
     const d=new Date(start);d.setDate(start.getDate()+i);const dow=d.getDay(),k=key(d),p=PLAN[dow];
     const sc=dayScore(k);
@@ -686,7 +758,10 @@ function renderSchedule(){
   </details>`;
   $("#v-schedule").innerHTML=h;
 }
+$("#v-schedule").addEventListener("change",e=>{const t=e.target;if(t.dataset.rem===undefined)return;const r=S.reminders[+t.dataset.rem];const k=t.dataset.k;r[k]=k==="on"?t.checked:t.value;save();remSync();if(k==="on")renderSchedule()});
 $("#v-schedule").addEventListener("click",e=>{
+  if(e.target.id==="rem-on"){e.target.disabled=true;e.target.textContent="Turning on…";remOn();return}
+  if(e.target.id==="rem-off"){remOff();return}
   const b=e.target.closest("[data-open]");if(b){cur=fromKey(b.dataset.open);renderWorkout();renderDiet();showTab("workout");return}
   const r=e.target.closest("[data-grm]");if(r){S.gear.splice(+r.dataset.grm,1);save();renderSchedule();$('[data-d="gear"]').open=true;return}
   if(e.target.id==="gear-btn"){const v=$("#gear-add").value.trim();if(v){S.gear.push(v);save();renderSchedule();$('[data-d="gear"]').open=true}}
