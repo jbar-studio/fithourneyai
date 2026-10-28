@@ -1,0 +1,13 @@
+# Free timer: every 10 minutes, asks the app to send any reminders that are due.
+# GitHub may run it a few minutes late; the app allows for that.
+name: Reminders
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: curl -fsS -X POST https://fitjourneyai.jbar.studio/api/tick
