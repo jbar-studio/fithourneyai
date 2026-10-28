@@ -684,7 +684,18 @@ const standalone=window.matchMedia("(display-mode: standalone)").matches||naviga
 const pushSupported="serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
 let remState="checking", remMsg="";
 let swReg=null;
-if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").then(r=>{swReg=r;return r.pushManager&&r.pushManager.getSubscription()}).then(sub=>{remState=sub?"on":"off";renderSchedule()}).catch(()=>{remState="off";renderSchedule()})}else{remState="off"}
+if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").then(r=>{swReg=r;return r.pushManager&&r.pushManager.getSubscription()}).then(sub=>{remState=sub?"on":"off";renderSchedule();if(sub)remHeal(sub)}).catch(()=>{remState="off";renderSchedule()})}else{remState="off"}
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}}, lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+// Each time the app opens, quietly re-save the reminder subscription so it survives a storage reset.
+async function remHeal(sub){
+  try{
+    const kr=await fetch("/api/push?a=key");if(!kr.ok)return;const {publicKey}=await kr.json();
+    const old=lsGet("fj_vapid");
+    if(old&&old!==publicKey){await sub.unsubscribe();sub=await swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(publicKey)})}
+    lsSet("fj_vapid",publicKey);
+    await api("/api/push",{action:"subscribe",subscription:sub.toJSON(),tz:Intl.DateTimeFormat().resolvedOptions().timeZone,reminders:remPayload()});
+  }catch(e){}
+}
 function remPayload(){const titles={};for(let d=0;d<7;d++)titles[d]=PLAN[d].title;return S.reminders.map(r=>r.id==="workout"?{...r,titles}:r)}
 function b64ToU8(b){const p="=".repeat((4-b.length%4)%4);const raw=atob((b+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(raw,c=>c.charCodeAt(0))}
 function pushErr(e){const c=e&&e.code;return c==="unauthorized"?"Enter your app passcode on the Coach tab first.":c==="storage_missing"?"Reminder storage isn't connected in Vercel yet.":c==="offline"?"You're offline. Try again with internet.":"Something went wrong. Try again in a minute."}
@@ -697,7 +708,9 @@ async function remOn(){
     const keyRes=await fetch("/api/push?a=key");const kj=await keyRes.json().catch(()=>({}));
     if(!keyRes.ok)throw {code:kj.code};
     let sub=await reg.pushManager.getSubscription();
+    if(sub&&lsGet("fj_vapid")&&lsGet("fj_vapid")!==kj.publicKey){await sub.unsubscribe();sub=null}
     if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(kj.publicKey)});
+    lsSet("fj_vapid",kj.publicKey);
     await api("/api/push",{action:"subscribe",subscription:sub.toJSON(),tz:Intl.DateTimeFormat().resolvedOptions().timeZone,reminders:remPayload()});
     await api("/api/push",{action:"test",subscription:sub.toJSON()});
     remState="on";toast("Reminders on");
