@@ -1064,7 +1064,7 @@ function fjIntro(root,{quick=false,onDone}={}){
   if(onDone)setTimeout(onDone,total);
   return total;
 }
-/* ---------- Opening animation: full once a day, quick after that ---------- */
+/* ---------- Opening animation: plays every open, tap to skip ---------- */
 (function(){
   const el=document.getElementById("intro");if(!el)return;
   const done=()=>{if(el.isConnected)el.remove()};
@@ -1075,9 +1075,8 @@ function fjIntro(root,{quick=false,onDone}={}){
     a.onfinish=done;setTimeout(done,600)};
   el.addEventListener("click",finish);
   if(matchMedia("(prefers-reduced-motion: reduce)").matches||!el.animate){done();return}
-  const today=new Date().toDateString();let seen=null;try{seen=localStorage.getItem("fj_intro_day")}catch(e){}
-  const quick=seen===today;try{localStorage.setItem("fj_intro_day",today)}catch(e){}
-  const go=()=>{if(!finished)fjIntro(el,{quick,onDone:finish})};
+  // Full animation every time the app opens. Tap anywhere to skip.
+  const go=()=>{if(!finished)fjIntro(el,{quick:false,onDone:finish})};
   const fonts=document.fonts&&document.fonts.ready?Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,600))]):Promise.resolve();
   fonts.then(()=>requestAnimationFrame(go));
 })();
